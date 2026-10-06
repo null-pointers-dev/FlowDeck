@@ -14,6 +14,17 @@ import { checkConnection, housekeeping } from "@/features/admin/server/connectio
 
 await startTelemetry("flowdeck-worker");
 
+if (!process.env.DATABASE_URL?.trim()) {
+  throw new Error("Missing environment variable DATABASE_URL. Copy .env.example to .env and configure PostgreSQL before starting the worker.");
+}
+
+try {
+  await pool.query("SELECT 1");
+} catch (error) {
+  await pool.end().catch(() => undefined);
+  throw new Error("Worker startup failed: PostgreSQL is not reachable. Check DATABASE_URL and make sure the database is running.", { cause: error });
+}
+
 // One handler per job contract. Web code only ever calls jobs.send(name, payload).
 handle("github.webhook", (d, { log }) => processWebhook(d.deliveryId, log));
 handle("runs.dispatch", (d, { log }) => dispatchRun(d.runRequestId, log));

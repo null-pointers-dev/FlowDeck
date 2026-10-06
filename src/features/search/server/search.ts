@@ -84,7 +84,7 @@ export async function searchWorkflows(actor: Actor, query: string, filters: Sear
   const families = await db
     .select({
       f: workflowFamily,
-      currentVersion: sql<string | null>`(select version from ${workflowVersion} v where v.family_id = ${workflowFamily.id} order by (v.status = 'current') desc, v.version desc limit 1)`,
+      currentVersion: sql<string | null>`(select version from ${workflowVersion} v where v.family_id = "workflow_family"."id" order by (v.status = 'current') desc, v.version desc limit 1)`,
     })
     .from(workflowFamily)
     .where(where)
