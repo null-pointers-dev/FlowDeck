@@ -1,0 +1,14 @@
+families:
+  - id: deploy-aks-service
+    title: Deploy a service to AKS
+    category: deploy
+    owner: platform-team
+    versions:
+      - { version: v3, file: .github/workflows/deploy-aks-service-v3.yml, status: current }
+      - { version: v2, file: .github/workflows/deploy-aks-service-v2.yml, status: deprecated, superseded_by: v3 }
+  - id: restart-pods
+    title: Restart pods for a service
+    category: maintain
+    owner: sre
+    versions:
+      - { version: v1, file: .github/workflows/restart-pods.yml, status: current }

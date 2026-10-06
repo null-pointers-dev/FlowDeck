@@ -1,0 +1,15 @@
+categories:
+  - key: deploy
+    name: Deploy
+    subcategories:
+      - { key: kubernetes, name: Kubernetes }
+      - { key: app-service, name: App Service }
+  - key: maintain
+    name: Maintain
+    subcategories:
+      - { key: restart, name: Restart and scale }
+      - { key: secrets, name: Secrets and certificates }
+  - key: provision
+    name: Provision
+  - key: rollback
+    name: Roll back

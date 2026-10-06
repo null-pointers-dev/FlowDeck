@@ -1,0 +1,40 @@
+# Deploys one image to two App Service apps (web with a staging slot, worker).
+# Data lives only in Azure Database for PostgreSQL, so deployments never touch it.
+name: Deploy
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  id-token: write
+  contents: read
+env:
+  IMAGE: ${{ vars.ACR_LOGIN_SERVER }}/flowdeck:${{ github.sha }}
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Build and push image
+        run: |
+          az acr login --name "${{ vars.ACR_NAME }}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+      - name: Migrate database (expand-only migrations, idempotent)
+        run: |
+          docker run --rm -e DATABASE_URL="${{ secrets.DATABASE_URL }}" "$IMAGE" sh -c "npx tsx scripts/db-setup.ts && npx drizzle-kit migrate && npx tsx scripts/seed.ts"
+      - name: Deploy web to staging slot
+        run: az webapp config container set -g "${{ vars.RESOURCE_GROUP }}" -n "${{ vars.WEB_APP }}" --slot staging --container-image-name "$IMAGE"
+      - name: Wait for staging health
+        run: |
+          for i in $(seq 1 30); do curl -fsS "https://${{ vars.WEB_APP }}-staging.azurewebsites.net/sign-in" >/dev/null && exit 0; sleep 10; done; exit 1
+      - name: Swap into production
+        run: az webapp deployment slot swap -g "${{ vars.RESOURCE_GROUP }}" -n "${{ vars.WEB_APP }}" --slot staging --target-slot production
+      - name: Deploy worker
+        run: az webapp config container set -g "${{ vars.RESOURCE_GROUP }}" -n "${{ vars.WORKER_APP }}" --container-image-name "$IMAGE"

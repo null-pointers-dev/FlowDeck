@@ -1,0 +1,17 @@
+services:
+  postgres:
+    # Postgres 17 with pgvector preinstalled (Azure Flexible Server offers the same extension).
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: flowdeck
+      POSTGRES_PASSWORD: flowdeck
+      POSTGRES_DB: flowdeck
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowdeck"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  pgdata:
