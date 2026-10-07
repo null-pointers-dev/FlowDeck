@@ -9,6 +9,13 @@ const fields: InputField[] = [
 ];
 
 describe("validateInputs", () => {
+  it("initializes optional non-boolean inputs with controlled empty values", () => {
+    expect(defaultValues([
+      { key: "text", type: "string", label: "Text", required: false },
+      { key: "count", type: "number", label: "Count", required: false },
+    ])).toEqual({ text: "", count: "" });
+  });
+
   it("applies patterns with a friendly message", () => {
     expect(validateInputs(fields, { ...defaultValues(fields), version: "2.14" }).errors.version).toBe("Use a full version like 2.14.0.");
   });

@@ -6,6 +6,7 @@ import { processWebhook } from "@/features/github/server/webhook";
 import { dispatchRun, pollActiveRuns, reconcileRun, resolveRun, runAction } from "@/features/runs/server/jobs";
 import { sendDecision, syncGates, syncTeam } from "@/features/approvals/server/jobs";
 import { syncCatalog } from "@/features/catalog/server/sync";
+import { notify } from "@/features/notify/server/service";
 import { embedFamily } from "@/features/search/server/embed";
 import { rebuildRecent, rollup } from "@/features/personal/server/insights";
 import { approvalRequested, deliver, runFinished } from "@/features/notify/server/jobs";
@@ -35,7 +36,44 @@ handle("runs.poll", (d, { log }) => pollActiveRuns(!!d.force, log));
 handle("approvals.sync", (d, { log }) => syncGates(d.repositoryId, d.githubRunId, log));
 handle("approvals.decide", (d, { log }) => sendDecision(d.gateId, log));
 handle("approvals.teamSync", (d, { log }) => syncTeam(d.org, d.slug, log));
-handle("catalog.sync", (_d, { log }) => syncCatalog(log));
+handle("catalog.sync", async (d, { log, attempt, attempts }) => {
+  try {
+    const result = await syncCatalog(log);
+    if (!d.requestedBy) return;
+
+    const outcome = result.status === "not_configured"
+      ? {
+          kind: "catalog.sync.needs_configuration",
+          title: "Catalog sync needs configuration",
+          body: "No DevOps catalog repository is configured. Check the catalog repository and GitHub connection settings.",
+          link: "/admin/connections",
+        }
+      : result.workflows === 0
+        ? {
+            kind: "catalog.sync.empty",
+            title: "Catalog sync found no workflows",
+            body: `Checked ${result.repository}, but no workflow files were found in .github/workflows/.`,
+            link: "/workflows",
+          }
+        : {
+            kind: "catalog.sync.completed",
+            title: "Catalog sync completed",
+            body: `Found ${result.workflows} workflow${result.workflows === 1 ? "" : "s"} across ${result.families} famil${result.families === 1 ? "y" : "ies"} in ${result.repository}; updated ${result.changedDocs} documentation file${result.changedDocs === 1 ? "" : "s"}.`,
+            link: "/workflows",
+          };
+    await notify(d.requestedBy, outcome).catch((err) => log.warn({ event: "catalog.sync_notification_failed", err }));
+  } catch (err) {
+    if (d.requestedBy && attempt >= attempts) {
+      await notify(d.requestedBy, {
+        kind: "catalog.sync.failed",
+        title: "Catalog sync failed",
+        body: "FlowDeck could not complete the catalog sync after several attempts. Check the worker and GitHub connection, then try again.",
+        link: "/admin/connections",
+      }).catch((notifyErr) => log.warn({ event: "catalog.sync_notification_failed", err: notifyErr }));
+    }
+    throw err;
+  }
+});
 handle("search.embed", (d, { log }) => embedFamily(d.familyId, log));
 handle("insights.rollup", (d) => rollup(d.familyId, d.ref, d.day));
 handle("insights.rebuild", () => rebuildRecent());

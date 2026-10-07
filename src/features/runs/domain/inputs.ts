@@ -48,6 +48,7 @@ export function defaultValues(fields: InputField[]): InputValues {
     else if (f.type === "boolean") values[f.key] = false;
     else if ((f.type === "choice" || f.type === "environment") && f.options?.length && f.required)
       values[f.key] = f.options[0];
+    else values[f.key] = "";
   }
   return values;
 }

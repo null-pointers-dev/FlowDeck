@@ -15,6 +15,10 @@ const DOCS = "docs/workflows/";
 
 type Octo = Awaited<ReturnType<typeof clientFor>>["octokit"];
 
+export type CatalogSyncResult =
+  | { status: "not_configured" }
+  | { status: "complete"; repository: string; families: number; workflows: number; changedDocs: number };
+
 async function readBlob(octokit: Octo, owner: string, repo: string, sha: string): Promise<string> {
   const { data } = await gh<{ content: string; encoding: string }>(octokit, "GET /repos/{owner}/{repo}/git/blobs/{file_sha}", { owner, repo, file_sha: sha });
   return Buffer.from(data.content, (data.encoding as BufferEncoding) || "base64").toString("utf8");
@@ -44,11 +48,11 @@ async function readEnvironments(octokit: Octo, owner: string, repo: string): Pro
  * Reads the DevOps repository and brings the catalog up to date. One tree call lists every
  * file; only files whose git SHA changed are downloaded and parsed again.
  */
-export async function syncCatalog(log: Logger) {
+export async function syncCatalog(log: Logger): Promise<CatalogSyncResult> {
   const cfg = config.catalogRepository;
   if (!cfg) {
     log.warn({ event: "catalog.not_configured" }, "Set CATALOG_REPOSITORY to the DevOps repository");
-    return;
+    return { status: "not_configured" };
   }
   const { octokit } = await clientFor(cfg.owner, "dispatch");
   const { owner, name } = cfg;
@@ -249,8 +253,10 @@ export async function syncCatalog(log: Logger) {
     update workflow_family set search_vector =
       setweight(to_tsvector('english', coalesce(title, '') || ' ' || coalesce(array_to_string(array(select jsonb_array_elements_text(aliases)), ' '), '')), 'A') ||
       setweight(to_tsvector('english', coalesce(summary, '')), 'B') ||
-      setweight(to_tsvector('english', coalesce(category, '') || ' ' || coalesce(subcategory, '') || ' ' || coalesce(array_to_string(array(select jsonb_array_elements_text(tags)), ' '), '') || ' ' || coalesce(owner, '')), 'C')
+      setweight(to_tsvector('english', coalesce(category, '') || ' ' || coalesce(subcategory, '') || ' ' || coalesce(array_to_string(array(select jsonb_array_elements_text(tags)), ' '), '') || ' ' || coalesce(owner, '')), 'C') ||
+      setweight(to_tsvector('english', coalesce((select string_agg(file_path, ' ') from workflow_version where family_id = workflow_family.id), '')), 'D')
     where present`);
 
   log.info({ event: "catalog.synced", families: seen.length, workflows: workflowPaths.length, changedDocs });
+  return { status: "complete", repository: info.full_name, families: seen.length, workflows: workflowPaths.length, changedDocs };
 }

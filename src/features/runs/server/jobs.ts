@@ -116,14 +116,15 @@ async function adoptRun(runRequestId: string, repositoryId: string, githubWorkfl
 
 export async function resolveRun(runRequestId: string, tries: number, log: Logger) {
   const ctx = await loadRunContext(runRequestId);
-  if (!ctx || !["unknown", "dispatching"].includes(ctx.rr.phase) || !ctx.version?.githubWorkflowId) return;
-  const { rr, repo, version } = ctx;
+  const workflowId = ctx?.version?.githubWorkflowId;
+  if (!ctx || !["unknown", "dispatching"].includes(ctx.rr.phase) || workflowId == null) return;
+  const { rr, repo } = ctx;
   const { octokit, connection } = await clientFor(repo.owner, "dispatch");
   const since = new Date((rr.dispatchStartedAt ?? rr.createdAt).getTime() - 60_000).toISOString();
   const { data } = await gh<{ workflow_runs: Array<{ id: number; html_url: string; created_at: string }> }>(octokit, "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs", {
     owner: repo.owner,
     repo: repo.name,
-    workflow_id: version.githubWorkflowId,
+    workflow_id: workflowId,
     event: "workflow_dispatch",
     branch: rr.ref,
     created: `>=${since}`,
@@ -138,7 +139,7 @@ export async function resolveRun(runRequestId: string, tries: number, log: Logge
   const free = candidates.filter((c) => !taken.has(c.id)).sort((a, b) => a.created_at.localeCompare(b.created_at));
   if (free.length) {
     log.info({ event: "run.adopted_after_unknown", runRequestId, githubRunId: free[0].id });
-    await adoptRun(runRequestId, repo.id, version.githubWorkflowId, free[0].id, free[0].html_url);
+    await adoptRun(runRequestId, repo.id, workflowId, free[0].id, free[0].html_url);
     await jobs.send("runs.reconcile", { repositoryId: repo.id, githubRunId: free[0].id });
     return;
   }

@@ -9,6 +9,7 @@ import { recheckConnection, removeConnection, saveConnection } from "./connectio
 import { addBinding, addGroupManually, checkAccess, deleteRole, peopleInGroup, removeBinding, saveRole } from "./access";
 import { addRule, deleteRule } from "./rules";
 import { retryFailed } from "./overview";
+import { notify } from "@/features/notify/server/service";
 
 const id = z.object({ id: z.string().uuid() });
 const optional = z.string().trim().max(200).transform((v) => v || null).nullable();
@@ -96,9 +97,15 @@ export const addRuleAction = defineAction(
 );
 export const deleteRuleAction = defineAction({ name: "admin.deleteRule", permission: "admin.approvals", input: id, revalidate: ["/admin/approvals"] }, (i, { actor }) => deleteRule(actor, i.id));
 
-export const syncCatalogAction = defineAction({ name: "admin.syncCatalog", permission: "admin.connections", input: z.object({}) }, async (_i, { actor }) => {
-  await jobs.send("catalog.sync", { reason: "manual" });
+export const syncCatalogAction = defineAction({ name: "admin.syncCatalog", permission: "admin.connections", input: z.object({}) }, async (_i, { actor, log }) => {
+  await jobs.send("catalog.sync", { reason: "manual", requestedBy: actor.userId });
   await audit(actor, "catalog.sync_requested", { type: "system" });
+  await notify(actor.userId, {
+    kind: "catalog.sync.started",
+    title: "Catalog sync queued",
+    body: "FlowDeck is checking the DevOps repository in the background. The result will be saved here.",
+    link: "/admin",
+  }).catch((err) => log.warn({ event: "catalog.sync_notification_failed", err }));
 });
 export const pollNowAction = defineAction({ name: "admin.pollNow", permission: "admin.audit", input: z.object({}) }, () => jobs.send("runs.poll", { force: true }));
 export const retryFailedAction = defineAction({ name: "admin.retryFailed", permission: "admin.audit", input: z.object({ queue: z.string() }), revalidate: ["/admin"] }, (i) => retryFailed(i.queue));

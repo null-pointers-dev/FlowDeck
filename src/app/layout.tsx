@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ColorSchemeScript, mantineHtmlProps } from "@mantine/core";
+import { mantineHtmlProps } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 import "@mantine/spotlight/styles.css";
@@ -20,10 +21,8 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, view
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`} {...mantineHtmlProps}>
-      <head>
-        <ColorSchemeScript defaultColorScheme="auto" />
-      </head>
       <body>
+        <Script src="/mantine-color-scheme.js" strategy="beforeInteractive" />
         <Providers>{children}</Providers>
       </body>
     </html>

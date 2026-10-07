@@ -150,7 +150,7 @@ export function RunView({ data }: { data: Data }) {
           </Alert>
         ))}
 
-        <Grid gutter="lg">
+        <Grid gap="lg">
           <Grid.Col span={{ base: 12, md: 8 }}>
             <Paper p="lg">
               <Title order={4} mb="sm">

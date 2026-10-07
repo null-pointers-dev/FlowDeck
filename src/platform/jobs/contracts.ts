@@ -34,7 +34,10 @@ export const contracts = {
   "approvals.decide": contract({ schema: z.object({ gateId: uuid }), dedupe: (p) => ({ id: `decide-${p.gateId}` }), attempts: 6 }),
   "approvals.teamSync": contract({ schema: z.object({ org: z.string(), slug: z.string() }), dedupe: (p) => ({ id: `team-${p.org}-${p.slug}`, ttl: 600_000 }), attempts: 3 }),
 
-  "catalog.sync": contract({ schema: z.object({ reason: z.string().default("manual") }), dedupe: () => ({ id: "catalog-sync", ttl: 30_000 }) }),
+  "catalog.sync": contract({
+    schema: z.object({ reason: z.string().default("manual"), requestedBy: z.string().optional() }),
+    dedupe: (p) => ({ id: p.requestedBy ? `catalog-sync-${p.requestedBy}` : "catalog-sync", ttl: 30_000 }),
+  }),
   "search.embed": contract({ schema: z.object({ familyId: z.string() }), dedupe: (p) => ({ id: `embed-${p.familyId}`, ttl: 5_000 }) }),
 
   "insights.rollup": contract({ schema: z.object({ familyId: z.string(), ref: z.string(), day: z.string() }), dedupe: (p) => ({ id: `rollup-${p.familyId}-${p.ref}-${p.day}`, ttl: 10_000 }) }),

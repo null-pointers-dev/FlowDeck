@@ -101,7 +101,7 @@ export function WorkflowView({ data, initialRef, initialPreset }: { data: Workfl
         </Alert>
       )}
 
-      <Grid gutter="xl">
+      <Grid gap="xl">
         <Grid.Col span={{ base: 12, lg: 7 }}>
           <Tabs defaultValue="overview" keepMounted={false}>
             <Tabs.List mb="md">
@@ -228,6 +228,10 @@ export function WorkflowView({ data, initialRef, initialPreset }: { data: Workfl
             ) : !version.dispatchable ? (
               <Alert color="gray" title="Not runnable from FlowDeck">
                 {family.kind === "reusable" ? "This is a reusable building block, called by other workflows." : "This workflow has no workflow_dispatch trigger."}
+              </Alert>
+            ) : !version.githubWorkflowId ? (
+              <Alert color="orange" title="Workflow not found on GitHub">
+                Check that this file exists on the repository's default branch, then sync the catalog again.
               </Alert>
             ) : version.githubState && version.githubState !== "active" ? (
               <Alert color="orange" title="Disabled on GitHub">

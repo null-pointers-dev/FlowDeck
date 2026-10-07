@@ -35,7 +35,7 @@ export function CatalogView({ hits, categories, environments, query }: Props) {
   return (
     <>
       <PageHeader title="Workflows" description="Every workflow you can run, with its documentation. Search by name or describe what you need." />
-      <Grid gutter="xl">
+      <Grid gap="xl">
         <Grid.Col span={{ base: 12, md: 3 }}>
           <Stack gap="lg" pos="sticky" top={84}>
             <TextInput

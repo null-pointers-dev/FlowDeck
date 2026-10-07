@@ -1,7 +1,8 @@
 "use client";
 
-import { ActionIcon, AppShell, Avatar, Badge, Burger, Divider, Group, Indicator, Menu, NavLink, ScrollArea, Stack, Text, Tooltip, UnstyledButton, useMantineColorScheme } from "@mantine/core";
+import { ActionIcon, AppShell, Avatar, Badge, Burger, Divider, Group, Indicator, Menu, NavLink, ScrollArea, Stack, Text, Tooltip, UnstyledButton, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { useEffect, useState } from "react";
 import { IconBell, IconHome, IconLayoutList, IconLogout, IconMoonStars, IconPlayerPlay, IconSettings, IconShieldCheck, IconSun, IconUser } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -26,8 +27,12 @@ export function Shell({ user, approvals, showAdmin, notifications, children }: S
   const [opened, { toggle, close }] = useDisclosure();
   const pathname = usePathname();
   const router = useRouter();
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const { setColorScheme } = useMantineColorScheme();
+  const computedColorScheme = useComputedColorScheme("light", { getInitialValueInEffect: true });
+  const [mounted, setMounted] = useState(false);
   const [markRead] = useServerAction(markAllReadAction, { onSuccess: () => router.refresh() });
+
+  useEffect(() => setMounted(true), []);
 
   const active = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
   const nav = [
@@ -74,18 +79,21 @@ export function Shell({ user, approvals, showAdmin, notifications, children }: S
                 )}
                 {notifications.items.map((n) => (
                   <Menu.Item key={n.id} onClick={() => n.link && router.push(n.link)}>
-                    <Text size="sm" fw={n.read ? 400 : 600} lineClamp={2}>
-                      {n.title}
-                    </Text>
-                    <TimeAgo at={n.at} size="xs" c="dimmed" />
+                    <Stack gap={2}>
+                      <Text size="sm" fw={n.read ? 400 : 600} lineClamp={2}>
+                        {n.title}
+                      </Text>
+                      {n.body && <Text size="xs" c="dimmed" lineClamp={2}>{n.body}</Text>}
+                      <TimeAgo at={n.at} size="xs" c="dimmed" />
+                    </Stack>
                   </Menu.Item>
                 ))}
               </Menu.Dropdown>
             </Menu>
 
-            <Tooltip label={colorScheme === "dark" ? "Light theme" : "Dark theme"}>
-              <ActionIcon variant="subtle" size="lg" aria-label="Toggle theme" onClick={() => setColorScheme(colorScheme === "dark" ? "light" : "dark")}>
-                {colorScheme === "dark" ? <IconSun size={19} /> : <IconMoonStars size={19} />}
+            <Tooltip label={mounted && computedColorScheme === "dark" ? "Light theme" : "Dark theme"}>
+              <ActionIcon variant="subtle" size="lg" aria-label="Toggle theme" onClick={() => setColorScheme(computedColorScheme === "dark" ? "light" : "dark")}>
+                {mounted && computedColorScheme === "dark" ? <IconSun size={19} /> : <IconMoonStars size={19} />}
               </ActionIcon>
             </Tooltip>
 

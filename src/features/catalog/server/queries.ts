@@ -85,6 +85,7 @@ export async function getWorkflowPage(actor: Actor, familyId: string, versionPar
           version: version.version,
           status: version.status,
           filePath: version.filePath,
+          githubWorkflowId: version.githubWorkflowId,
           dispatchable: version.dispatchable,
           githubState: version.githubState,
           inputs: version.inputs,

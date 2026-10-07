@@ -5,7 +5,7 @@ import { logger, type Logger } from "../logger";
 
 /** Worker side only. Never imported by web code. */
 
-type Handler<N extends JobName> = (data: JobData<N>, ctx: { log: Logger; attempt: number }) => Promise<void>;
+type Handler<N extends JobName> = (data: JobData<N>, ctx: { log: Logger; attempt: number; attempts: number }) => Promise<void>;
 const handlers = new Map<string, Handler<JobName>>();
 
 export function handle<N extends JobName>(name: N, fn: Handler<N>) {
@@ -34,7 +34,7 @@ export function startWorkers() {
         const data = contracts[name].schema.parse(job.data);
         const log = logger.child({ job: name, jobId: job.id, attempt: job.attemptsMade + 1 });
         const started = performance.now();
-        await fn(data as never, { log, attempt: job.attemptsMade + 1 });
+        await fn(data as never, { log, attempt: job.attemptsMade + 1, attempts: job.opts.attempts ?? 1 });
         log.debug({ event: "job.done", ms: Math.round(performance.now() - started) });
       },
       { ...bullConnection(Math.max(4, CONCURRENCY[queueName] ?? 4)), concurrency: CONCURRENCY[queueName] ?? 4 },
